@@ -1,0 +1,311 @@
+<script>
+// Fastest Gaussian Blur: http://blog.ivank.net/fastest-gaussian-blur.html
+function boxesForGauss(sigma, n)  // standard deviation, number of boxes
+{
+    var wIdeal = Math.sqrt((12*sigma*sigma/n)+1);  // Ideal averaging filter width 
+    var wl = Math.floor(wIdeal);  if(wl%2==0) wl--;
+    var wu = wl+2;
+    var mIdeal = (12*sigma*sigma - n*wl*wl - 4*n*wl - 3*n)/(-4*wl - 4);
+    var m = Math.round(mIdeal);
+    var sizes = [];  for(var i=0; i<n; i++) sizes.push(i<m?wl:wu);
+    return sizes;
+}
+function gaussBlur_4(scl, tcl, w, h, r) {
+    var bxs = boxesForGauss(r, 3);
+    boxBlur_4(scl, tcl, w, h, (bxs[0]-1)/2);
+    boxBlur_4(tcl, scl, w, h, (bxs[1]-1)/2);
+    boxBlur_4(scl, tcl, w, h, (bxs[2]-1)/2);
+}
+function boxBlur_4(scl, tcl, w, h, r) {
+    for(var i=0; i<scl.length; i++) tcl[i] = scl[i];
+    boxBlurH_4(tcl, scl, w, h, r);
+    boxBlurT_4(scl, tcl, w, h, r);
+}
+function boxBlurH_4(scl, tcl, w, h, r) {
+    var iarr = 1 / (r+r+1);
+    for(var i=0; i<h; i++) {
+        var ti = i*w, li = ti, ri = ti+r;
+        var fv = scl[ti], lv = scl[ti+w-1], val = (r+1)*fv;
+        for(var j=0; j<r; j++) val += scl[ti+j];
+        for(var j=0  ; j<=r ; j++) { val += scl[ri++] - fv       ;   tcl[ti++] = val*iarr; }
+        for(var j=r+1; j<w-r; j++) { val += scl[ri++] - scl[li++];   tcl[ti++] = val*iarr; }
+        for(var j=w-r; j<w  ; j++) { val += lv        - scl[li++];   tcl[ti++] = val*iarr; }
+    }
+}
+function boxBlurT_4(scl, tcl, w, h, r) {
+    var iarr = 1 / (r+r+1);
+    for(var i=0; i<w; i++) {
+        var ti = i, li = ti, ri = ti+r*w;
+        var fv = scl[ti], lv = scl[ti+w*(h-1)], val = (r+1)*fv;
+        for(var j=0; j<r; j++) val += scl[ti+j*w];
+        for(var j=0  ; j<=r ; j++) { val += scl[ri] - fv     ;  tcl[ti] = val*iarr;  ri+=w; ti+=w; }
+        for(var j=r+1; j<h-r; j++) { val += scl[ri] - scl[li];  tcl[ti] = val*iarr;  li+=w; ri+=w; ti+=w; }
+        for(var j=h-r; j<h  ; j++) { val += lv      - scl[li];  tcl[ti] = val*iarr;  li+=w; ti+=w; }
+    }
+}
+////////////////////////////////////////////////////////////////
+
+function GetData()
+{ 
+	var req = new XMLHttpRequest();
+	var URL = "/cgi-bin/ml2.cgi?";
+	var elem = document.forms[0].elements;
+
+	var conv = elem[1].value;
+	var shear = elem[3].value;
+
+	mag_theor = 1./Math.abs((1-conv)*(1-conv) - shear*shear);
+	var mag_limit = 50;
+	if (mag_theor > mag_limit) {
+			document.ajax.dyn.value = mag_theor.toFixed(3) + " > upper limit " + mag_limit + " : try other convergence and shear";
+			return;
+	}
+	if (document.getElementById('r1').checked) {
+		  alpha = document.getElementById('r1').value;
+	}
+	if (document.getElementById('r2').checked) {
+		  alpha = document.getElementById('r2').value;
+	}
+	if (document.getElementById('r3').checked) {
+		  alpha = document.getElementById('r3').value;
+	}
+
+	URL = URL + elem[1].name + "=" + elem[1].value + "&"; // convergence
+	URL = URL + elem[3].name + "=" + elem[3].value + "&"; // shear
+	URL = URL + elem[5].name + "=" + elem[5].value + "&"; // smooth
+	URL = URL + elem[8].name + "=" + alpha + "&"; // alpha
+	URL = URL + elem[11].name + "=" + elem[11].value + "&"; // map size
+	URL = URL + elem[12].name + "=" + elem[12].value; // Nim
+
+	var Nim = Math.round(elem[12].value);	
+
+	var r = elem[6].value * Nim / elem[11].value;
+	// Einstein radius in pixels   
+	var di = Math.round(Nim / elem[11].value);             
+	req.open("GET", URL, true);
+	req.responseType = "arraybuffer"; 
+
+	req.onload = function()
+	{ 
+		document.ajax.dyn.value="Started...";		
+		var canvas = document.getElementById('draw');
+		canvas.width = Nim;
+		canvas.height = Nim;
+		var context = canvas.getContext('2d');
+
+		var arrayBuffer = req.response;
+		if (arrayBuffer) 
+		{ 
+			var imageData = context.createImageData(Nim, Nim);
+			var pix = imageData.data;
+
+			var imageArray = new Float32Array(arrayBuffer);
+			// Blur
+			var imageArrayBlur = new Float32Array(Nim*Nim);
+			gaussBlur_4(imageArray, imageArrayBlur, Nim, Nim, r);			
+			//
+			var flux_norm = new Float32Array(Nim*Nim);
+
+			var max_flux = imageArray[0];
+			var mean_flux = 0.; 
+			for (var i=0; i < Nim*Nim; i+=1) {
+				if (imageArray[i] > max_flux) max_flux = imageArray[i];
+				mean_flux = mean_flux + imageArray[i];
+			}
+			mean_flux = mean_flux/(Nim*Nim);
+			max_flux = 4*mean_flux; // + 0.25*(max_flux - mean_flux);
+			for (var i=0; i < Nim*Nim; i+=1) {
+				var f = imageArrayBlur[i]/max_flux;
+				if (max_flux == 0) f = 0;
+				// jet colormap
+				if (f < 0.125) {
+					red = 0; green = 0; blue = 0.5 + 4*f;
+				} else if (f < 0.375) {
+					red = 0; green = 4*(f - 0.125); blue = 1; 
+				} else if (f < 0.625) {
+					red = 4*(f - 0.375); green = 1; blue = 1 - 4*(f-0.375);
+				} else if (f < 0.875) {
+					red = 1; green = 1 - 4*(f-0.625); blue = 0;
+				} else {
+					red = 1 - 4*(f-0.875); green = 0; blue = 0;
+				}	
+
+				pix[4*i] = Math.floor(255*red);
+				pix[4*i+1] = Math.floor(255*green); 
+				pix[4*i+2] = Math.floor(255*blue); 
+				pix[4*i+3] = 255;
+			}
+			document.ajax.dyn.value="magnification: mean " + mean_flux.toFixed(3) + " (theory " + mag_theor.toFixed(3) +")";
+
+//// Chart //////////////////////////////////
+		var d1 = [], i, graph;
+		var xmin = -1.6;
+		var xmax = 1.6;
+		var dx = 0.01;
+		var Nx = Math.round((xmax - xmin)/dx);
+		var hist = new Float32Array(Nx);
+		hist_min = -4;
+		for (i = 0; i < Nim*Nim; i += 1) {
+			ind = (Math.log10(imageArrayBlur[i]/mean_flux) - xmin) / (xmax - xmin) * Nx;
+			if (ind >= 0 && ind < Nx) hist[Math.round(ind)] += 1;
+		}
+		for (i = 0; i < Nx; i += 1) {
+			hist[i] = hist[i]/(Nim*Nim);
+			if (hist[i] > 1.E-5) {
+				hist[i] = Math.log10(hist[i]);
+			} else {
+				hist[i] = hist_min - 1;
+			};
+		}
+		for (i = 0; i < Nx; i += 1) {
+			d1.push([xmin + i*dx, hist[i]-hist_min]);
+		}	
+		// Draw Graph
+		Flotr.draw(document.getElementById("chart"), [d1], {
+			title: "Magnification Probability Distribution",
+			HtmlText: false,
+			xaxis: {
+				//minorTickFreq: 4,
+				title: 'log10(\u03BC/<\u03BC>_theory)',
+				min: -1.6,
+				max: 1.6,
+				tickDecimals: 1
+			},
+			yaxis: {
+				title: "log10(Probability)",
+				titleAngle: 90,
+				min: -4 - hist_min,
+				max: 0 - hist_min,
+				tickDecimals: 0,
+				tickFormatter: function(val) {return (parseFloat(val) + hist_min).toString()} 
+			},
+			lines: {
+				fill: true
+			},
+			mouse : { 
+				track : true, 
+				trackFormatter: function (e) {return e.x+' '+(parseFloat(e.y) + hist_min).toFixed(2);}, //{return e.y;}, 
+				trackDecimals: 2, 
+				relative: true, //false, 
+				position: 'n', //'se', 
+				lineColor: '#ffff00', 
+				sensibility: 2, 
+				trackY: true, 
+				radius: 3, 
+				margin: 5, 
+				mouseTextColor: '#ffffff', 
+				mouseBGColor: '#000000', 
+				boxAlpha: '0.8', 
+				fillColor: null, 
+				fillOpacity: 0.8 
+			},
+			//grid: {
+			//		//minorVerticalLines: true
+			//}
+		});
+//// end Chart ////////////////////////////////
+
+			context.putImageData(imageData, 0, 0);
+		}
+	};
+	req.send(null);
+//	document.ajax.dyn.value="Processing..."; 
+} 
+</script>
+
+<TITLE>microlens simulations</TITLE>
+<BODY>
+<style>
+body 
+      .left {
+        float: left;
+	    width: 50%;
+      }
+      .right {
+        margin-left: 500px;
+        width: 50%; 	 
+      }
+h1 {
+    color: darkblue; 
+    margin-left: 10px;
+}
+input[type=range]::-moz-range-track {
+  background-color: blue;
+}
+/*table, th, td {
+    border: 1px solid black;
+}*/
+</style>
+
+<H1>Microlensing magnification maps</H1>
+<div class="left"> 
+<FORM name="ajax" method="GET" action="">
+
+<table>
+  <tr>
+    <th>Parameter</th>
+    <th>Value</th>
+    <th>Min</th>
+    <th>Range</th>
+    <th>Max</th>
+  </tr>
+  <tr>
+    <td>convergence </td>
+    <td><output name="xconv"> 0.3 </output> </td>
+    <td>0.01</td>
+    <td><input type="range" name="conv" id="convId" min="0.01" max="2.0" step="0.01" value="0.3" oninput="xconv.value=conv.value"> </td>
+    <td>2.0</td>
+  </tr>
+  <tr>
+    <td>shear</td>
+    <td><output name="xshear"> 0.3 </output></td>
+    <td>0.0</td>
+    <td><input type="range" name="shear" min="0.0" max="2.0" step="0.01" value="0.3" oninput="xshear.value=shear.value"></td>
+    <td>2.0</td>
+  </tr>
+  <tr>
+    <td>smooth fraction</td>
+    <td><output name="xsmooth"> 0.0 </output></td>
+    <td>0.0</td>
+    <td><input type="range" name="smooth" min="0.0" max="0.99" step="0.01" value="0.0" oninput="xsmooth.value=smooth.value"></td>
+    <td>0.99</td>
+  </tr>
+  <tr>
+    <td>source radius</td>
+    <td><output name="xradius"> 0.0 </output></td>
+    <td>0.0</td>
+    <td><input type="range" name="radius" min="0.0" max="1.0" step="0.01" value="0.0" oninput="xradius.value=radius.value" onmouseup="GetData()"></td>
+    <td>1.0</td>
+  </tr>
+</table>
+	star masses <input type="radio" id="r1" name="alpha" value="0.0" checked> identical 
+				<input type="radio" id="r2" name="alpha" value="1.3"> power -1.3 
+ 				<input type="radio" id="r3" name="alpha" value="2.5"> power -2.5 
+	<p>
+	<select name="size">
+		<option value="5" >map size 5 Re</option>
+		<option value="10">map size 10 Re</option>
+		<option value="20"selected>map size 20 Re</option>
+		<option value="50">map size 50 Re</option>
+		<option value="100">map size 100 Re</option>
+	</select>
+	<select name="npix">
+		<option value="500"  >Npix 500</option>
+		<option value="1000" selected>Npix 1000</option>
+		<option value="2000" >Npix 2000</option>
+	</select>
+    <input id="calc" type="BUTTON" value="Generate" onclick="GetData()" style="background-color: lightblue; height:35px;">
+	</p>
+	<input type="text" name="dyn" size="32" value=""> 
+</FORM>
+</div>
+
+<div class="right">
+<div id="chart" style="width:360px;height:210px;"></div>
+<!--[if lt IE 9]><script src="js/excanvas.min.js"></script><![endif]-->
+<script src="js/flotr2.min.js"></script>
+</div> <br>
+
+<canvas id="draw" width="1000" height="1000"> </canvas>
+
+</BODY></HTML>
