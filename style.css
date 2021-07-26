@@ -1,0 +1,10 @@
+body {background-color: white; color: black;}
+h1 {color: darkblue; margin-left: 10px;}
+.left {float: left; width: 50%;}
+.right {margin-left: 500px; width: 50%;}
+
+input[type=range]::-moz-range-track {background-color: blue;}
+input[type=button] {background-color: lightblue; height: 35px;}
+
+#chart {width: 350px; height: 250px;}
+#draw {position:absolute; left:10px;} 
