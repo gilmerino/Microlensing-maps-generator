@@ -22,12 +22,12 @@ In order to compile and link the corresponding Fortran files you need to install
     > ifort ml2.f90 -mkl -qopenmp -o ml2.cgi
 3) Transfer that statically linked program ml2.cgi in your system cgi-bin/ directory.
 
-The corresponding files in a Linux machine should be distributed as:
-/var/www/html/ml2.html
-/var/www/cgi-bin/ml2.cgi
-/var/www/html/style.css
-/var/www/html/js/flotr2.min.js
-/var/www/html/js/excanvas.min.js
+The corresponding files in a Linux machine should be distributed as:<br/>
+/var/www/html/ml2.html<br/>
+/var/www/cgi-bin/ml2.cgi<br/>
+/var/www/html/style.css<br/>
+/var/www/html/js/flotr2.min.js<br/>
+/var/www/html/js/excanvas.min.js<br/>
 
 Please, cite our website and paper if you use this software in your work.
 
