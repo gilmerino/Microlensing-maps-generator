@@ -4,14 +4,14 @@ This is the code to produce the magnification microlensing patterns that you can
 There you can find detailed explanations and links to scientific papers describing both the code and applications of the code. A direct link to the last paper about this code is https://arxiv.org/abs/2107.07222
 
 The full list of the files in this project:<br/>
-js/excanvas.min.js      &emsp; // JS library to support ancient browsers (earlier than Internet Explorer 6)<br/>
-js/flotr2.min.js        &emsp; // JS library to draw<br/>
-lib/mkl_dfti.f90        &emsp; // three Fortran modules from Math Kernel Library used by the Poisson Solver<br/>
+js/excanvas.min.js      &emsp;  // JS library to support ancient browsers (earlier than Internet Explorer 6)<br/>
+js/flotr2.min.js        &emsp;  // JS library to draw<br/>
+lib/mkl_dfti.f90        &emsp;&emsp;  // three Fortran modules from Math Kernel Library used by the Poisson Solver<br/>
 lib/mkl_poisson.f90<br/>
 lib/mkl_trig_tranforms.f90<br/>
-ml2.html              &emsp;&emsp;// HTML interface<br/>
-ml2.f90               &emsp;&emsp;  // source code<br/>
-style.css             &emsp;&emsp;  // style file<br/>
+ml2.html             &emsp; &emsp;&emsp;  // HTML interface<br/>
+ml2.f90              &emsp; &emsp;&emsp;  // source code<br/>
+style.css            &emsp; &emsp;&emsp;  // style file<br/>
 
 
 INSTRUCTIONS:
