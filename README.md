@@ -5,7 +5,7 @@ There you can find detailed explanations and links to scientific papers describi
 
 The full list of the files in this project:<br/>
 js/excanvas.min.js      &emsp;  // JS library to support ancient browsers (earlier than Internet Explorer 6)<br/>
-js/flotr2.min.js        &emsp;  // JS library to draw<br/>
+js/flotr2.min.js      &emsp;  &emsp;  // JS library to draw<br/>
 lib/mkl_dfti.f90        &emsp;&emsp;  // three Fortran modules from Math Kernel Library used by the Poisson Solver<br/>
 lib/mkl_poisson.f90<br/>
 lib/mkl_trig_tranforms.f90<br/>
